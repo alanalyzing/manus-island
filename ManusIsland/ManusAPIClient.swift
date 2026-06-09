@@ -790,6 +790,7 @@ actor ManusAPIClient {
     private var apiKey: String
     private let session: URLSession
     private var taskNameCache: [String: String] = [:]
+    private var usageTitleCache: [String: String] = [:]  // task_id -> official title from usage.list
     private var creditCache: [String: Int] = [:]  // task_id -> credits (consumption, negative)
     private var totalRefunds: Int = 0
     private var totalGrants: Int = 0
@@ -806,6 +807,7 @@ actor ManusAPIClient {
     func updateAPIKey(_ newKey: String) {
         self.apiKey = newKey
         self.taskNameCache.removeAll()
+        self.usageTitleCache.removeAll()
         self.creditCache.removeAll()
         self.lastCreditFetch = .distantPast
     }
@@ -1100,6 +1102,10 @@ actor ManusAPIClient {
             var refunds = 0
             var grants = 0
             for record in allRecords {
+                // Cache official titles from usage.list (these match the web UI)
+                if let tid = record.taskId, let title = record.title, !title.isEmpty {
+                    usageTitleCache[tid] = title
+                }
                 if let tid = record.taskId, let credits = record.credits {
                     if record.type == "cost" {
                         creditCache[tid] = abs(credits)
@@ -1129,6 +1135,11 @@ actor ManusAPIClient {
     /// Get cached credits for a task
     func creditsForTask(_ taskId: String) -> Int {
         return creditCache[taskId] ?? 0
+    }
+
+    /// Get the official title from usage.list (matches Manus web UI)
+    func officialTitle(for taskId: String) -> String? {
+        return usageTitleCache[taskId]
     }
 
     // MARK: - Aggregated Tool Stats
@@ -1221,6 +1232,12 @@ actor ManusAPIClient {
     // MARK: - Fetch Task Name (cached, from first user message)
 
     func fetchTaskName(taskId: String, isActive: Bool = false) async throws -> String {
+        // Priority 0: Use official title from usage.list (matches Manus web UI exactly)
+        if let officialTitle = usageTitleCache[taskId], !officialTitle.isEmpty {
+            taskNameCache[taskId] = officialTitle
+            return officialTitle
+        }
+
         // Don't use cache for active tasks — their names may change as the plan evolves
         if !isActive, let cached = taskNameCache[taskId] { return cached }
 
