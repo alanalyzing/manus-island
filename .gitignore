@@ -1,0 +1,26 @@
+# Build artifacts
+build/
+dmg_staging/
+*.app
+*.dmg
+*.zip
+brand-notes.md
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
